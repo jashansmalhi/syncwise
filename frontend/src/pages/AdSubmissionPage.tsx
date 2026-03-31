@@ -1,5 +1,7 @@
 import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchRecommendations } from '../api/client'
+import { DemoPromptStrip, type DemoPromptPreset } from '../components/DemoPromptStrip'
+import { LoadingState } from '../components/LoadingState'
 import { SongCard } from '../components/SongCard'
 import { ThemedSelect } from '../components/ThemedSelect'
 import type { Genre, Industry, LyricsPreference, Mood, RecommendedSong, Tempo } from '../types'
@@ -56,6 +58,60 @@ const genreOptions: GenreSelection[] = [
 ]
 const MAX_RECOMMENDATIONS = 10
 
+const demoPromptPresets: DemoPromptPreset[] = [
+  {
+    id: 'tech-launch',
+    label: 'Tech Launch',
+    description: 'A polished AI workflow launch spot for startup teams and modern product demos.',
+    values: {
+      adTitle: 'Neon Launch',
+      adDescription:
+        'A polished AI workflow launch spot for startup teams with glowing dashboards, fast product cuts, and a confident futuristic tone.',
+      duration: 30,
+      energy: 4,
+      tempo: 'Fast',
+      mood: 'Positive',
+      industry: 'Tech',
+      preferredGenre: 'Electronic',
+      lyricsPreference: 'No Lyrics',
+    },
+  },
+  {
+    id: 'retail-drop',
+    label: 'Retail Drop',
+    description: 'A stylish retail campaign for a new collection drop with clean visuals and motion.',
+    values: {
+      adTitle: 'Weekend Drop',
+      adDescription:
+        'A stylish retail campaign for a new collection drop, featuring clean visuals, quick pacing, and a cool fashion-forward vibe.',
+      duration: 15,
+      energy: 3,
+      tempo: 'Medium',
+      mood: 'Positive',
+      industry: 'Retail',
+      preferredGenre: 'Pop',
+      lyricsPreference: 'No Preference',
+    },
+  },
+  {
+    id: 'luxury-auto',
+    label: 'Luxury Auto',
+    description: 'A premium car film with cinematic pacing, city lights, and understated confidence.',
+    values: {
+      adTitle: 'Precision Drive',
+      adDescription:
+        'A premium luxury auto film with night city streets, reflective surfaces, cinematic pacing, and understated confidence.',
+      duration: 45,
+      energy: 4,
+      tempo: 'Slow',
+      mood: 'Serious',
+      industry: 'Automotive',
+      preferredGenre: 'Soundtrack',
+      lyricsPreference: 'No Lyrics',
+    },
+  },
+]
+
 export function AdSubmissionPage() {
   const [adTitle, setAdTitle] = useState('')
   const [adDescription, setAdDescription] = useState('')
@@ -76,9 +132,11 @@ export function AdSubmissionPage() {
   const [rightPanelHeight, setRightPanelHeight] = useState<number>()
   const leftPanelRef = useRef<HTMLDivElement | null>(null)
   const requestIdRef = useRef(0)
+  const lastRequestedLimitRef = useRef<number>(MAX_RECOMMENDATIONS)
 
   async function runRecommendationRequest(limit: number) {
     const requestId = ++requestIdRef.current
+    lastRequestedLimitRef.current = limit
     setIsLoading(true)
     setError(null)
     setResults([])
@@ -116,6 +174,9 @@ export function AdSubmissionPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setResults([])
+    setLlmFallbackUsed(false)
+    setError(null)
     setHasSubmitted(true)
     await runRecommendationRequest(MAX_RECOMMENDATIONS)
   }
@@ -130,6 +191,27 @@ export function AdSubmissionPage() {
     setIndustry('Tech')
     setGenre('No Preference')
     setLyricsPreference('No Preference')
+    setResults([])
+    setLlmFallbackUsed(false)
+    setError(null)
+    setHasSubmitted(false)
+    setIsLoading(false)
+  }
+
+  function handleRetry() {
+    void runRecommendationRequest(lastRequestedLimitRef.current)
+  }
+
+  function applyDemoPrompt(prompt: DemoPromptPreset['values']) {
+    setAdTitle(prompt.adTitle)
+    setAdDescription(prompt.adDescription)
+    setDuration(prompt.duration)
+    setEnergy(prompt.energy)
+    setTempo(prompt.tempo)
+    setMood(prompt.mood)
+    setIndustry(prompt.industry)
+    setGenre(prompt.preferredGenre)
+    setLyricsPreference(prompt.lyricsPreference)
     setResults([])
     setLlmFallbackUsed(false)
     setError(null)
@@ -176,7 +258,7 @@ export function AdSubmissionPage() {
   )
 
   const recommendationsHint = useMemo(() => {
-    if (isLoading) return 'Generating ranked recommendations for your campaign'
+    if (isLoading) return 'Curating your results into a ranked shortlist'
     if (error) return 'We could not generate recommendations. Update campaign details and try again.'
     if (!hasSubmitted) return 'Ranked track recommendations will appear here after you submit a campaign'
     if (results.length > 0) return ''
@@ -200,6 +282,8 @@ export function AdSubmissionPage() {
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-start">
         <div ref={leftPanelRef} className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <DemoPromptStrip prompts={demoPromptPresets} onApplyPrompt={applyDemoPrompt} />
+
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Campaign Summary</p>
             <div className="flex flex-wrap gap-2">
@@ -341,25 +425,24 @@ export function AdSubmissionPage() {
             )}
 
             {hasSubmitted && isLoading && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="loading-wave">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <p className="mt-3 text-center text-sm text-slate-600">Curating your top matches</p>
-                </div>
-                <div className="space-y-3">
-                  <LoadingCard />
-                  <LoadingCard />
-                </div>
-              </div>
+              <LoadingState
+                subtitle="We are shaping a ranked shortlist that fits the brief you just gave us."
+                steps={['Analyzing campaign tone', 'Scoring best-fit tracks', 'Preparing the shortlist']}
+              />
             )}
 
             {hasSubmitted && !isLoading && error && (
-              <div className="surface-enter rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
+              <div className="surface-enter rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                <p className="font-medium text-rose-800">We hit a temporary issue generating recommendations. Please try again.</p>
+                <p className="mt-1 text-rose-700/90">{error}</p>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="mt-3 inline-flex items-center justify-center rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                >
+                  Try Again
+                </button>
+              </div>
             )}
 
             {hasSubmitted && !isLoading && !error && results.length === 0 && (
@@ -377,7 +460,7 @@ export function AdSubmissionPage() {
                       className="result-enter min-h-0"
                       style={{ animationDelay: `${Math.min(index * 90, 360)}ms` }}
                     >
-                      <SongCard song={song} fitMode={fitMode} fallbackUsed={llmFallbackUsed} />
+                      <SongCard song={song} rank={index + 1} fitMode={fitMode} fallbackUsed={llmFallbackUsed} />
                     </div>
                   ))}
                 </div>
@@ -477,16 +560,6 @@ function SummaryChip({ label, value }: { label: string; value: string }) {
     <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs">
       <span className="text-slate-500">{label}:</span>
       <span className="font-medium text-slate-800">{value}</span>
-    </div>
-  )
-}
-
-function LoadingCard() {
-  return (
-    <div className="animate-pulse rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div className="mb-3 h-4 w-2/3 rounded bg-slate-200" />
-      <div className="mb-2 h-3 w-1/2 rounded bg-slate-200" />
-      <div className="h-3 w-4/5 rounded bg-slate-200" />
     </div>
   )
 }
