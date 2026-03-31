@@ -6,19 +6,9 @@ interface SongCardProps {
   fitMode?: 'compact' | 'micro' | 'normal' | 'nano'
 }
 
-const energyLabel: Record<number, string> = {
-  1: 'Calm',
-  2: 'Relaxed',
-  3: 'Moderate',
-  4: 'Upbeat',
-  5: 'High',
-}
-
 export function SongCard({ song, fitMode = 'compact' }: SongCardProps) {
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
   const dense = fitMode === 'micro' || fitMode === 'nano'
-  const ultraDense = fitMode === 'nano'
-  const metaSummary = `${song.genre} · ${song.tempo} · ${song.mood} · ${energyLabel[song.energy] ?? `${song.energy}`}`
 
   return (
     <article className={`relative flex h-full min-h-0 overflow-hidden rounded-xl border border-slate-200 bg-white ${dense ? 'p-2' : 'p-3'} shadow-sm`}>
@@ -31,32 +21,23 @@ export function SongCard({ song, fitMode = 'compact' }: SongCardProps) {
             <p className={`${dense ? 'text-xs' : 'text-sm'} truncate text-slate-500`}>{song.artist}</p>
           </div>
           <span className={`${dense ? 'text-xs' : 'text-sm'} whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-0.5 font-semibold text-emerald-700`}>
-            {song.matchScore}% match
+            score {song.matchScore.toFixed(4)}
           </span>
         </div>
 
-        {ultraDense ? (
-          <p className="truncate text-[11px] text-slate-600">{metaSummary}</p>
-        ) : (
-          <div className={`${dense ? 'mb-0.5 gap-1' : 'mb-1.5 gap-1.5'} flex flex-wrap`}>
-            <MetaPill label={song.genre} dense={dense} />
-            <MetaPill label={song.tempo} dense={dense} />
-            <MetaPill label={song.mood} dense={dense} />
-            <MetaPill label={energyLabel[song.energy] ?? `${song.energy}`} dense={dense} />
-          </div>
-        )}
+        <div className={`${dense ? 'mb-0.5 gap-1' : 'mb-1.5 gap-1.5'} flex flex-wrap`}>
+          <MetaPill label={song.genre} dense={dense} />
+          <MetaPill label={song.popularity} dense={dense} />
+        </div>
 
-        <p
-          className={`${dense ? 'text-[11px]' : 'text-xs'} text-slate-600`}
-          style={{
-            display: '-webkit-box',
-            WebkitLineClamp: dense ? 1 : 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
+        <a
+          href={song.fmaUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={`${dense ? 'text-[11px]' : 'text-xs'} text-sky-700 underline`}
         >
-          {song.explanation.replace(/\./g, '')}
-        </p>
+          Open on FMA
+        </a>
       </div>
 
       <div className={`${dense ? 'ml-2 pl-2' : 'ml-3 pl-3'} flex shrink-0 flex-col items-center justify-center gap-1 border-l border-slate-100`}>

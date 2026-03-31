@@ -2,7 +2,7 @@ import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 
 import { fetchRecommendations } from '../api/client'
 import { SongCard } from '../components/SongCard'
 import { ThemedSelect } from '../components/ThemedSelect'
-import type { Genre, Industry, Mood, RecommendedSong, Tempo } from '../types'
+import type { Genre, Industry, LyricsPreference, Mood, RecommendedSong, Tempo } from '../types'
 
 const energyOptions = [
   { value: 1, label: 'Calm' },
@@ -14,6 +14,7 @@ const energyOptions = [
 
 const tempoOptions: Tempo[] = ['Slow', 'Medium', 'Fast']
 const moodOptions: Mood[] = ['Positive', 'Neutral', 'Serious']
+const lyricsPreferenceOptions: LyricsPreference[] = ['No Preference', 'No Lyrics', 'Lyrics']
 
 const industryOptions: Industry[] = [
   'Tech',
@@ -61,6 +62,7 @@ export function AdSubmissionPage() {
   const [mood, setMood] = useState<Mood>('Neutral')
   const [industry, setIndustry] = useState<Industry>('Tech')
   const [genre, setGenre] = useState<Genre>('Electronic')
+  const [lyricsPreference, setLyricsPreference] = useState<LyricsPreference>('No Preference')
 
   const [results, setResults] = useState<RecommendedSong[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -83,7 +85,8 @@ export function AdSubmissionPage() {
         tempo,
         mood,
         industry,
-        genre,
+        genreOverride: [genre],
+        lyricsPreference,
         limit,
       })
       if (requestId === requestIdRef.current) {
@@ -118,6 +121,7 @@ export function AdSubmissionPage() {
     setMood('Neutral')
     setIndustry('Tech')
     setGenre('Electronic')
+    setLyricsPreference('No Preference')
     setResults([])
     setError(null)
     setHasSubmitted(false)
@@ -157,8 +161,9 @@ export function AdSubmissionPage() {
       mood,
       industry,
       genre,
+      lyricsPreference,
     }),
-    [adTitle, duration, energy, tempo, mood, industry, genre],
+    [adTitle, duration, energy, tempo, mood, industry, genre, lyricsPreference],
   )
 
   const recommendationsHint = useMemo(() => {
@@ -180,6 +185,7 @@ export function AdSubmissionPage() {
         <h2 className="mb-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Find the right music for your campaign</h2>
         <p className="max-w-3xl text-slate-600">
           Describe your campaign and get ranked track recommendations with clear fit explanations
+          Lower scores indicate closer matches in the V4 model.
         </p>
       </section>
 
@@ -195,6 +201,7 @@ export function AdSubmissionPage() {
               <SummaryChip label="Mood" value={campaignSummary.mood} />
               <SummaryChip label="Industry" value={campaignSummary.industry} />
               <SummaryChip label="Genre" value={campaignSummary.genre} />
+              <SummaryChip label="Lyrics" value={campaignSummary.lyricsPreference} />
             </div>
           </div>
 
@@ -255,10 +262,18 @@ export function AdSubmissionPage() {
                 <ThemedSelect label="Industry" value={industry} options={industryOptions} onChange={setIndustry} />
               </Field>
 
-              <Field label="Genre">
+              <Field label="Genre Override">
                 <ThemedSelect label="Genre" value={genre} options={genreOptions} onChange={setGenre} />
               </Field>
             </div>
+
+            <Field label="Lyrics Preference">
+              <SegmentedString<LyricsPreference>
+                options={lyricsPreferenceOptions}
+                value={lyricsPreference}
+                onChange={setLyricsPreference}
+              />
+            </Field>
 
             <button
               type="submit"
@@ -350,7 +365,7 @@ export function AdSubmissionPage() {
                 }
               >
                 {visibleResults.map((song, index) => (
-                  <div key={song.id} className="result-enter min-h-0" style={{ animationDelay: `${Math.min(index * 90, 360)}ms` }}>
+                  <div key={`${song.artist}-${song.title}-${index}`} className="result-enter min-h-0" style={{ animationDelay: `${Math.min(index * 90, 360)}ms` }}>
                     <SongCard song={song} fitMode={fitMode} />
                   </div>
                 ))}

@@ -1,5 +1,6 @@
 export type Tempo = 'Slow' | 'Medium' | 'Fast'
 export type Mood = 'Positive' | 'Neutral' | 'Serious'
+export type LyricsPreference = 'Lyrics' | 'No Lyrics' | 'No Preference'
 
 export type Industry =
   | 'Tech'
@@ -41,21 +42,18 @@ export interface RecommendationRequest {
   tempo: Tempo
   mood: Mood
   industry: Industry
-  genre: Genre
+  genreOverride?: Genre[]
+  lyricsPreference?: LyricsPreference
   limit?: number
 }
 
 export interface RecommendedSong {
-  id: string
-  title: string
   artist: string
+  title: string
   genre: string
-  energy: number
-  tempo: string
-  mood: string
+  fmaUrl: string
   matchScore: number
-  explanation: string
-  image?: string
+  popularity: string
 }
 
 export interface RecommendationResponse {
