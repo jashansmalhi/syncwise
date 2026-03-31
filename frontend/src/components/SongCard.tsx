@@ -3,15 +3,18 @@ import type { RecommendedSong } from '../types'
 
 interface SongCardProps {
   song: RecommendedSong
+  rank: number
   fitMode?: 'compact' | 'micro' | 'normal' | 'nano'
   fallbackUsed?: boolean
 }
 
-export function SongCard({ song, fitMode = 'compact', fallbackUsed = false }: SongCardProps) {
+export function SongCard({ song, rank, fitMode = 'compact', fallbackUsed = false }: SongCardProps) {
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
   const dense = fitMode === 'micro' || fitMode === 'nano'
   const nano = fitMode === 'nano'
   const displayScore = Math.max(1, Math.round((1 - Math.min(song.matchScore, 0.9999)) * 100))
+  const rankLabel = rank === 1 ? 'Best Match' : `Match #${rank}`
+  const rationaleChips = buildRationaleChips(song)
   const accentClass = fallbackUsed
     ? 'from-violet-500 to-fuchsia-400'
     : 'from-sky-500 to-cyan-400'
@@ -39,16 +42,20 @@ export function SongCard({ song, fitMode = 'compact', fallbackUsed = false }: So
             </h3>
             <p className={`${nano ? 'text-xs' : 'text-sm'} truncate text-slate-500`}>{song.artist}</p>
           </div>
-          <span
-            className={`${nano ? 'text-[11px] px-2 py-1' : dense ? 'text-xs px-2.5 py-1' : 'text-sm px-3 py-1'} ${chipClass} shrink-0 whitespace-nowrap rounded-full border font-semibold shadow-sm`}
-          >
-            {displayScore}% match
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span
+              className={`${nano ? 'text-[11px] px-2 py-1' : dense ? 'text-xs px-2.5 py-1' : 'text-sm px-3 py-1'} ${chipClass} shrink-0 whitespace-nowrap rounded-full border font-semibold shadow-sm`}
+            >
+              {rankLabel}
+            </span>
+            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">{displayScore}% fit</span>
+          </div>
         </div>
 
         <div className={`${nano ? 'gap-1' : 'gap-1.5'} flex flex-wrap`}>
-          <MetaPill label={song.genre} dense={dense} />
-          <MetaPill label={song.popularity} dense={dense} />
+          {rationaleChips.map((chip) => (
+            <MetaPill key={chip} label={chip} dense={dense} />
+          ))}
         </div>
       </div>
 
@@ -77,6 +84,26 @@ export function SongCard({ song, fitMode = 'compact', fallbackUsed = false }: So
       </div>
     </article>
   )
+}
+
+function buildRationaleChips(song: RecommendedSong): string[] {
+  const chips: string[] = []
+
+  if (song.genre) {
+    chips.push(`Genre: ${song.genre}`)
+  }
+
+  chips.push(`Popularity: ${song.popularity}`)
+  chips.push(`Score: ${scoreBand(song.matchScore)}`)
+
+  return chips.slice(0, 3)
+}
+
+function scoreBand(score: number): string {
+  if (score <= 0.08) return 'Top score'
+  if (score <= 0.12) return 'Strong score'
+  if (score <= 0.18) return 'Solid score'
+  return 'Looser score'
 }
 
 function MetaPill({ label, dense }: { label: string; dense: boolean }) {

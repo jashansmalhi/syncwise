@@ -444,7 +444,7 @@ export function AdSubmissionPage() {
                       className="result-enter min-h-0"
                       style={{ animationDelay: `${Math.min(index * 90, 360)}ms` }}
                     >
-                      <SongCard song={song} fitMode={fitMode} fallbackUsed={llmFallbackUsed} />
+                      <SongCard song={song} rank={index + 1} fitMode={fitMode} fallbackUsed={llmFallbackUsed} />
                     </div>
                   ))}
                 </div>
