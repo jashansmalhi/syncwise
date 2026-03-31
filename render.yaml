@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: syncwise-backend
+    env: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: APP_NAME
+        value: SyncWise API
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_URLS
+        sync: false
+      - key: MODEL_ARTIFACT_DIR
+        value: /opt/render/project/src/backend/artifacts
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: OLLAMA_BASE_URL
+        value: https://ollama.com
+      - key: OLLAMA_MODEL
+        value: ministral-3:3b

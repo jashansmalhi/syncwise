@@ -1,17 +1,18 @@
-# SyncWise MVP
+# SyncWise
 
-SyncWise is a local-first music-tech web app that matches ad characteristics to songs.
+SyncWise is a music-to-ad matching web app that recommends FMA tracks for ad briefs using a FastAPI backend, local model artifacts, and Ollama Cloud feature extraction.
 
 Users can:
 - Submit ad details on the main page
-- Receive 5 ranked mock song recommendations from a FastAPI backend
-- Use a second page to submit song metadata (dummy UX flow)
+- Receive ranked song recommendations from the backend
+- Refine the sound direction with campaign controls such as energy, tempo, mood, lyrics preference, and preferred genre
 
 ## Stack
 
 - Frontend: React + Vite + TypeScript + Tailwind CSS + React Router
-- Backend: FastAPI + Pydantic
-- Architecture: split `frontend/` and `backend/`, env-driven API URL, modular recommendation service
+- Backend: FastAPI + Pydantic + Pandas + scikit-learn
+- LLM provider: Ollama Cloud
+- Architecture: split `frontend/` and `backend/`, env-driven API URL, artifact-backed recommendation service
 
 ## Folder Structure
 
@@ -25,6 +26,7 @@ SyncWise/
       types/
   backend/
     app/
+    artifacts/
       api/
       core/
       data/
@@ -52,6 +54,13 @@ pip install -r requirements.txt
 cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
+
+Required artifacts for the backend live in `backend/artifacts/`:
+
+- `scaler_v3.pkl`
+- `pca_v3.pkl`
+- `v4_weights.json`
+- `fma_pre_z_filtered_avail.csv`
 
 Health check:
 
@@ -94,6 +103,10 @@ VITE_API_BASE_URL=http://localhost:8000
 APP_NAME=SyncWise API
 APP_ENV=development
 FRONTEND_URLS=http://localhost:5173,http://127.0.0.1:5173
+MODEL_ARTIFACT_DIR=./backend/artifacts
+OLLAMA_API_KEY=
+OLLAMA_BASE_URL=https://ollama.com
+OLLAMA_MODEL=ministral-3:3b
 ```
 
 ## API
@@ -111,76 +124,84 @@ Accepts:
   "tempo": "Fast",
   "mood": "Positive",
   "industry": "Automotive",
-  "genre": "Electronic"
+  "genreOverride": ["Electronic"],
+  "lyricsPreference": "No Lyrics",
+  "limit": 5
 }
 ```
 
-Returns top 5:
+Returns:
 
-- `id`
+- `recommendations`
+- `llmFallbackUsed`
+
+Each recommendation includes:
+
 - `title`
 - `artist`
 - `genre`
-- `energy`
-- `tempo`
-- `mood`
+- `fmaUrl`
 - `matchScore`
-- `explanation`
-- `image`
+- `popularity`
 
-## Mock Recommendation Logic
+## Recommendation Runtime
 
-The backend uses a rule-based scoring service in:
+The backend recommendation flow lives in:
 
 - `backend/app/services/recommendation_service.py`
 
-Scoring factors:
+It uses:
 
-- Genre exact match boost
-- Mood exact match boost
-- Tempo exact match boost
-- Energy proximity boost
-- Industry tag boost
-- Keyword boosts from ad description and song keyword tags
-
-Data source:
-
-- `backend/app/data/mock_songs.py` (20 realistic mock songs)
-
-## Where to swap in real ML later
-
-Keep the API contract and replace internals of:
-
-- `RecommendationService.get_recommendations(...)`
-
-Suggested next evolution:
-
-1. Move mock songs to DB/vector store
-2. Add feature extraction/embeddings for ad text
-3. Call model inference service in `services/`
-4. Keep route + schema files unchanged to avoid frontend breakage
+- campaign controls from the request
+- Ollama Cloud to estimate `danceability` and `acousticness`
+- local model artifacts from `backend/artifacts/`
+- a fallback of `0.5 / 0.5` if the Ollama request fails or no API key is configured
 
 ## Deployment Notes (Free Hosting)
 
 ### Frontend
 
-- Vercel or Netlify
+- Vercel
 - Build command: `npm run build`
 - Output dir: `dist`
-- Set `VITE_API_BASE_URL` to deployed backend URL
+- Root directory: `frontend`
+- Set `VITE_API_BASE_URL` to the deployed backend URL
 
 ### Backend
 
 - Render Web Service
+- Root directory: `backend`
+- Build command: `pip install -r requirements.txt`
 - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-- Set env vars from `.env.example`
+- Backend artifacts are committed in `backend/artifacts/`
+- Set env vars from `backend/.env.example`
 
-## MVP Feature Checklist
+## Deployment Environment Variables
+
+### Vercel
+
+```env
+VITE_API_BASE_URL=https://your-render-service.onrender.com
+```
+
+### Render
+
+```env
+APP_NAME=SyncWise API
+APP_ENV=production
+FRONTEND_URLS=https://your-vercel-app.vercel.app
+MODEL_ARTIFACT_DIR=/opt/render/project/src/backend/artifacts
+OLLAMA_API_KEY=your_ollama_key
+OLLAMA_BASE_URL=https://ollama.com
+OLLAMA_MODEL=ministral-3:3b
+```
+
+## Current Feature Checklist
 
 - Home page with hero, ad form, and recommendations section
-- Music submission page with dummy success flow
-- No auth/login
+- V4 recommendation backend with artifact-backed ranking
+- Ollama-backed ad feature extraction with neutral fallback
 - Responsive startup-style UI
 - Loading, empty, and error states
-- API-driven recommendation cards with realistic metadata
-- Local-first structure with straightforward cloud deployment path
+- API-driven recommendation cards with live FMA links
+- GitHub-connected deployment path via Vercel and Render
