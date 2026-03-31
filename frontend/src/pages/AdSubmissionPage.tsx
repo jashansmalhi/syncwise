@@ -1,5 +1,6 @@
 import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchRecommendations } from '../api/client'
+import { DemoPromptStrip, type DemoPromptPreset } from '../components/DemoPromptStrip'
 import { SongCard } from '../components/SongCard'
 import { ThemedSelect } from '../components/ThemedSelect'
 import type { Genre, Industry, LyricsPreference, Mood, RecommendedSong, Tempo } from '../types'
@@ -55,6 +56,60 @@ const genreOptions: GenreSelection[] = [
   'Compilation',
 ]
 const MAX_RECOMMENDATIONS = 10
+
+const demoPromptPresets: DemoPromptPreset[] = [
+  {
+    id: 'tech-launch',
+    label: 'Tech Launch',
+    description: 'A polished AI workflow launch spot for startup teams and modern product demos.',
+    values: {
+      adTitle: 'Neon Launch',
+      adDescription:
+        'A polished AI workflow launch spot for startup teams with glowing dashboards, fast product cuts, and a confident futuristic tone.',
+      duration: 30,
+      energy: 4,
+      tempo: 'Fast',
+      mood: 'Positive',
+      industry: 'Tech',
+      preferredGenre: 'Electronic',
+      lyricsPreference: 'No Lyrics',
+    },
+  },
+  {
+    id: 'retail-drop',
+    label: 'Retail Drop',
+    description: 'A stylish retail campaign for a new collection drop with clean visuals and motion.',
+    values: {
+      adTitle: 'Weekend Drop',
+      adDescription:
+        'A stylish retail campaign for a new collection drop, featuring clean visuals, quick pacing, and a cool fashion-forward vibe.',
+      duration: 15,
+      energy: 3,
+      tempo: 'Medium',
+      mood: 'Positive',
+      industry: 'Retail',
+      preferredGenre: 'Pop',
+      lyricsPreference: 'No Preference',
+    },
+  },
+  {
+    id: 'luxury-auto',
+    label: 'Luxury Auto',
+    description: 'A premium car film with cinematic pacing, city lights, and understated confidence.',
+    values: {
+      adTitle: 'Precision Drive',
+      adDescription:
+        'A premium luxury auto film with night city streets, reflective surfaces, cinematic pacing, and understated confidence.',
+      duration: 45,
+      energy: 4,
+      tempo: 'Slow',
+      mood: 'Serious',
+      industry: 'Automotive',
+      preferredGenre: 'Soundtrack',
+      lyricsPreference: 'No Lyrics',
+    },
+  },
+]
 
 export function AdSubmissionPage() {
   const [adTitle, setAdTitle] = useState('')
@@ -137,6 +192,23 @@ export function AdSubmissionPage() {
     setIsLoading(false)
   }
 
+  function applyDemoPrompt(prompt: DemoPromptPreset['values']) {
+    setAdTitle(prompt.adTitle)
+    setAdDescription(prompt.adDescription)
+    setDuration(prompt.duration)
+    setEnergy(prompt.energy)
+    setTempo(prompt.tempo)
+    setMood(prompt.mood)
+    setIndustry(prompt.industry)
+    setGenre(prompt.preferredGenre)
+    setLyricsPreference(prompt.lyricsPreference)
+    setResults([])
+    setLlmFallbackUsed(false)
+    setError(null)
+    setHasSubmitted(false)
+    setIsLoading(false)
+  }
+
   useEffect(() => {
     function syncRightPanelHeight() {
       if (window.innerWidth < 1024 || !leftPanelRef.current) {
@@ -200,6 +272,8 @@ export function AdSubmissionPage() {
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-start">
         <div ref={leftPanelRef} className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <DemoPromptStrip prompts={demoPromptPresets} onApplyPrompt={applyDemoPrompt} />
+
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Campaign Summary</p>
             <div className="flex flex-wrap gap-2">
