@@ -51,28 +51,32 @@ class Genre(str, Enum):
     compilation = "Compilation"
 
 
+class LyricsPreference(str, Enum):
+    lyrics = "Lyrics"
+    no_lyrics = "No Lyrics"
+    no_preference = "No Preference"
+
+
 class RecommendationRequest(BaseModel):
     adDescription: str = Field(..., min_length=5, max_length=1500)
     energy: int = Field(..., ge=1, le=5)
     tempo: Tempo
     mood: Mood
     industry: Industry
-    genre: Genre
+    genreOverride: Optional[List[Genre]] = None
+    lyricsPreference: LyricsPreference = LyricsPreference.no_preference
     limit: int = Field(5, ge=1, le=10)
 
 
 class RecommendedSong(BaseModel):
-    id: str
-    title: str
     artist: str
+    title: str
     genre: str
-    energy: int
-    tempo: str
-    mood: str
-    matchScore: int = Field(..., ge=0, le=100)
-    explanation: str
-    image: Optional[str] = None
+    fmaUrl: str
+    matchScore: float = Field(..., ge=0)
+    popularity: str
 
 
 class RecommendationResponse(BaseModel):
     recommendations: List[RecommendedSong]
+    llmFallbackUsed: bool = False

@@ -25,3 +25,7 @@ w210_spring_2026_dynamic_music_ad_matching/
 
 # TS build info
 frontend/*.tsbuildinfo
+
+# Test artifacts
+frontend/test-results/
+frontend/playwright-report/
