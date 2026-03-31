@@ -165,7 +165,8 @@ It uses:
 - Build command: `npm run build`
 - Output dir: `dist`
 - Root directory: `frontend`
-- Set `VITE_API_BASE_URL` to the deployed backend URL
+- Recommended production API base: `/api`
+- Vercel rewrites `/api/*` to `https://syncwise-backend.onrender.com/*`
 
 ### Backend
 
@@ -181,7 +182,7 @@ It uses:
 ### Vercel
 
 ```env
-VITE_API_BASE_URL=https://your-render-service.onrender.com
+VITE_API_BASE_URL=/api
 ```
 
 ### Render

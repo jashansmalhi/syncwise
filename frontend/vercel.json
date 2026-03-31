@@ -4,6 +4,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://syncwise-backend.onrender.com/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
