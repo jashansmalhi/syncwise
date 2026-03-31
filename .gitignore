@@ -22,6 +22,7 @@ backend/.env
 
 # Local research clone
 w210_spring_2026_dynamic_music_ad_matching/
+docs/
 
 # TS build info
 frontend/*.tsbuildinfo
