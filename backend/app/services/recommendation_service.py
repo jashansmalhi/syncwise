@@ -1,19 +1,15 @@
 import json
 import re
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
+import httpx
 import joblib
 import numpy as np
 import pandas as pd
 
 from app.core.config import settings
-from app.models.schemas import RecommendationRequest, RecommendedSong
+from app.models.schemas import RecommendationRequest, RecommendationResponse, RecommendedSong
 from app.services.artifact_store import ArtifactStore
-
-try:
-    import anthropic
-except ImportError:  # pragma: no cover
-    anthropic = None
 
 
 POPULARITY_PENALTY = 0.20
@@ -61,7 +57,6 @@ class RecommendationService:
         self.artifact_store = artifact_store or ArtifactStore()
         self._artifacts = artifacts
         self.llm_feature_resolver = llm_feature_resolver
-        self._anthropic_client = None
 
     @staticmethod
     def get_valid_genres(industry: str) -> List[str]:
@@ -71,7 +66,7 @@ class RecommendationService:
             if industry in industries
         ]
 
-    def get_recommendations(self, request: RecommendationRequest, limit: int = 5) -> List[RecommendedSong]:
+    def get_recommendations(self, request: RecommendationRequest, limit: int = 5) -> RecommendationResponse:
         artifacts = self._get_artifacts()
         df_tracks = artifacts["df_tracks"]
         df_pca = artifacts["df_pca"]
@@ -80,7 +75,7 @@ class RecommendationService:
         target_energy = ENERGY_MAP[request.energy]
         target_tempo = TEMPO_MAP[request.tempo.value]
         target_valence = MOOD_MAP[request.mood.value]
-        llm_features = self._get_llm_features(request.adDescription)
+        llm_features, llm_fallback_used = self._get_llm_features(request.adDescription)
 
         df_filtered = self._filter_tracks(
             df_tracks=df_tracks,
@@ -123,17 +118,20 @@ class RecommendationService:
         ranked["match_score"] = scores
         top_matches = ranked.nsmallest(limit, "match_score")
 
-        return [
-            RecommendedSong(
-                artist=row["artist_name"],
-                title=row["track_title"],
-                genre=row["track_genres_name"],
-                fmaUrl=row["fma_album_url"],
-                matchScore=round(float(row["match_score"]), 4),
-                popularity=row["popularity_bucket"],
-            )
-            for _, row in top_matches.iterrows()
-        ]
+        return RecommendationResponse(
+            recommendations=[
+                RecommendedSong(
+                    artist=row["artist_name"],
+                    title=row["track_title"],
+                    genre=row["track_genres_name"],
+                    fmaUrl=row["fma_album_url"],
+                    matchScore=round(float(row["match_score"]), 4),
+                    popularity=row["popularity_bucket"],
+                )
+                for _, row in top_matches.iterrows()
+            ],
+            llmFallbackUsed=llm_fallback_used,
+        )
 
     def _get_artifacts(self) -> Dict[str, object]:
         if self._artifacts is None:
@@ -164,41 +162,61 @@ class RecommendationService:
         )
         return {"df_tracks": df_tracks, "df_pca": df_pca, "weights": weights}
 
-    def _get_llm_features(self, description: str) -> Dict[str, float]:
+    def _get_llm_features(self, description: str) -> Tuple[Dict[str, float], bool]:
         if self.llm_feature_resolver is not None:
             features = self.llm_feature_resolver(description)
-            return self._normalize_llm_features(features)
+            return self._normalize_llm_features(features), False
 
-        if not settings.anthropic_api_key or anthropic is None:
-            return self._default_llm_features()
-
-        if self._anthropic_client is None:
-            self._anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        if not settings.ollama_api_key:
+            return self._default_llm_features(), True
 
         try:
-            message = self._anthropic_client.messages.create(
-                model="claude-3-5-sonnet-latest",
-                max_tokens=256,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": (
-                            "You are a music supervisor choosing background music for an advertisement. "
-                            "Given this ad description, estimate danceability and acousticness for the ideal "
-                            "background music. Return only JSON with float values between 0 and 1.\n\n"
-                            f"Ad description: {description}"
-                        ),
-                    }
-                ],
+            response = httpx.post(
+                f"{settings.ollama_base_url.rstrip('/')}/api/chat",
+                headers={
+                    "Authorization": f"Bearer {settings.ollama_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.ollama_model,
+                    "stream": False,
+                    "format": {
+                        "type": "object",
+                        "properties": {
+                            "danceability": {"type": "number"},
+                            "acousticness": {"type": "number"},
+                        },
+                        "required": ["danceability", "acousticness"],
+                    },
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "You estimate music-fit features for ad briefs. "
+                                "Return only JSON with danceability and acousticness as floats between 0 and 1."
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                "Estimate the ideal background music features for this advertisement.\n"
+                                f"Ad description: {description}"
+                            ),
+                        },
+                    ],
+                },
+                timeout=20.0,
             )
-            text = message.content[0].text.strip()
+            response.raise_for_status()
+            payload = response.json()
+            text = str(payload.get("message", {}).get("content", "")).strip()
             match = re.search(r"\{.*?\}", text, re.DOTALL)
             if match:
-                return self._normalize_llm_features(json.loads(match.group()))
+                return self._normalize_llm_features(json.loads(match.group())), False
         except Exception:
-            return self._default_llm_features()
+            return self._default_llm_features(), True
 
-        return self._default_llm_features()
+        return self._default_llm_features(), True
 
     def _filter_tracks(
         self,
@@ -208,7 +226,7 @@ class RecommendationService:
         lyrics_preference: str,
         genre_override: Optional[List[str]] = None,
     ) -> pd.DataFrame:
-        valid_genres = genre_override or self.get_valid_genres(industry)
+        valid_genres = genre_override or []
         if valid_genres:
             df_filtered = df_tracks[df_tracks["track_genres_name"].isin(valid_genres)].copy()
         else:

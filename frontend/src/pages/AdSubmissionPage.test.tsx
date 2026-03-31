@@ -17,6 +17,7 @@ describe('AdSubmissionPage', () => {
   it('submits the V4 request shape and renders the response', async () => {
     const fetchRecommendationsMock = vi.mocked(fetchRecommendations)
     fetchRecommendationsMock.mockResolvedValue({
+      llmFallbackUsed: true,
       recommendations: [
         {
           artist: 'Artist A',
@@ -44,14 +45,13 @@ describe('AdSubmissionPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Start Ad Matching' }))
 
     await waitFor(() => {
-      expect(fetchRecommendationsMock).toHaveBeenCalledWith(
+        expect(fetchRecommendationsMock).toHaveBeenCalledWith(
         expect.objectContaining({
           adDescription: 'A polished AI dashboard commercial for a tech audience.',
           energy: 4,
           tempo: 'Medium',
           mood: 'Positive',
           industry: 'Tech',
-          genreOverride: ['Electronic'],
           lyricsPreference: 'No Lyrics',
           limit: 10,
         }),
@@ -59,8 +59,6 @@ describe('AdSubmissionPage', () => {
     })
 
     expect(await screen.findByText('Track A')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Higher match scores indicate stronger fits based on the V4 model\./),
-    ).toBeInTheDocument()
+    expect(screen.queryByText('Fallback Mode')).not.toBeInTheDocument()
   })
 })

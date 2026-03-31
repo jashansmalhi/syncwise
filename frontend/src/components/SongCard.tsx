@@ -4,21 +4,32 @@ import type { RecommendedSong } from '../types'
 interface SongCardProps {
   song: RecommendedSong
   fitMode?: 'compact' | 'micro' | 'normal' | 'nano'
+  fallbackUsed?: boolean
 }
 
-export function SongCard({ song, fitMode = 'compact' }: SongCardProps) {
+export function SongCard({ song, fitMode = 'compact', fallbackUsed = false }: SongCardProps) {
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
   const dense = fitMode === 'micro' || fitMode === 'nano'
   const nano = fitMode === 'nano'
   const displayScore = Math.max(1, Math.round((1 - Math.min(song.matchScore, 0.9999)) * 100))
+  const accentClass = fallbackUsed
+    ? 'from-violet-500 to-fuchsia-400'
+    : 'from-sky-500 to-cyan-400'
+  const chipClass = fallbackUsed
+    ? 'border-violet-100 bg-violet-50/90 text-violet-700'
+    : 'border-emerald-100 bg-emerald-50/90 text-emerald-700'
 
   return (
     <article
-      className={`relative flex min-h-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_18px_44px_rgba(14,116,144,0.12)] ${
+      className={`relative flex min-h-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 ${
+        fallbackUsed
+          ? 'hover:border-violet-200 hover:shadow-[0_18px_44px_rgba(109,40,217,0.14)]'
+          : 'hover:border-sky-200 hover:shadow-[0_18px_44px_rgba(14,116,144,0.12)]'
+      } ${
         nano ? 'p-2' : dense ? 'p-2.5' : 'p-3.5'
       }`}
     >
-      <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-sky-500 to-cyan-400" />
+      <div className={`absolute left-0 top-0 h-full w-1 bg-gradient-to-b ${accentClass}`} />
 
       <div className={`flex min-w-0 flex-1 flex-col ${nano ? 'gap-1 pl-1.5' : 'gap-1.5 pl-2'}`}>
         <div className="flex items-start justify-between gap-2">
@@ -29,7 +40,7 @@ export function SongCard({ song, fitMode = 'compact' }: SongCardProps) {
             <p className={`${nano ? 'text-xs' : 'text-sm'} truncate text-slate-500`}>{song.artist}</p>
           </div>
           <span
-            className={`${nano ? 'text-[11px] px-2 py-1' : dense ? 'text-xs px-2.5 py-1' : 'text-sm px-3 py-1'} shrink-0 whitespace-nowrap rounded-full border border-emerald-100 bg-emerald-50/90 font-semibold text-emerald-700 shadow-sm`}
+            className={`${nano ? 'text-[11px] px-2 py-1' : dense ? 'text-xs px-2.5 py-1' : 'text-sm px-3 py-1'} ${chipClass} shrink-0 whitespace-nowrap rounded-full border font-semibold shadow-sm`}
           >
             {displayScore}% match
           </span>
@@ -44,12 +55,13 @@ export function SongCard({ song, fitMode = 'compact' }: SongCardProps) {
       <div
         className={`${nano ? 'ml-2 pl-2' : 'ml-3 pl-3'} flex shrink-0 flex-col items-center justify-center gap-1.5 border-l border-slate-100/90`}
       >
-        <ActionLink href={song.fmaUrl} dense={dense} />
+        <ActionLink href={song.fmaUrl} dense={dense} fallbackUsed={fallbackUsed} />
         <FeedbackButton
           active={feedback === 'up'}
           onClick={() => setFeedback((curr) => (curr === 'up' ? null : 'up'))}
           label={`Thumbs up for ${song.title}`}
           dense={dense}
+          fallbackUsed={fallbackUsed}
         >
           <ThumbUpIcon />
         </FeedbackButton>
@@ -58,6 +70,7 @@ export function SongCard({ song, fitMode = 'compact' }: SongCardProps) {
           onClick={() => setFeedback((curr) => (curr === 'down' ? null : 'down'))}
           label={`Thumbs down for ${song.title}`}
           dense={dense}
+          fallbackUsed={fallbackUsed}
         >
           <ThumbDownIcon />
         </FeedbackButton>
@@ -76,15 +89,18 @@ function MetaPill({ label, dense }: { label: string; dense: boolean }) {
   )
 }
 
-function ActionLink({ href, dense }: { href: string; dense: boolean }) {
+function ActionLink({ href, dense, fallbackUsed }: { href: string; dense: boolean; fallbackUsed: boolean }) {
   const sizeClass = dense ? 'h-8 w-8' : 'h-9 w-9'
+  const colorClass = fallbackUsed
+    ? 'border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100'
+    : 'border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 hover:bg-sky-100'
 
   return (
     <a
       href={href}
       target="_blank"
       rel="noreferrer"
-      className={`${sizeClass} inline-flex items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-700 transition hover:border-sky-300 hover:bg-sky-100`}
+      className={`${sizeClass} ${colorClass} inline-flex items-center justify-center rounded-full border transition`}
       aria-label="Open Track"
       title="Open Track"
     >
@@ -98,12 +114,14 @@ function FeedbackButton({
   onClick,
   label,
   dense,
+  fallbackUsed,
   children,
 }: {
   active: boolean
   onClick: () => void
   label: string
   dense: boolean
+  fallbackUsed: boolean
   children: ReactNode
 }) {
   const sizeClass = dense ? 'h-8 w-8 p-0' : 'h-9 w-9 p-0'
@@ -113,8 +131,12 @@ function FeedbackButton({
       onClick={onClick}
       className={`${sizeClass} inline-flex items-center justify-center rounded-full border transition ${
         active
-          ? 'border-sky-300 bg-sky-100 text-sky-700'
-          : 'border-sky-100 bg-sky-50 text-sky-600 hover:border-sky-200 hover:bg-sky-100'
+          ? fallbackUsed
+            ? 'border-violet-300 bg-violet-100 text-violet-700'
+            : 'border-sky-300 bg-sky-100 text-sky-700'
+          : fallbackUsed
+            ? 'border-violet-100 bg-violet-50 text-violet-600 hover:border-violet-200 hover:bg-violet-100'
+            : 'border-sky-100 bg-sky-50 text-sky-600 hover:border-sky-200 hover:bg-sky-100'
       }`}
       aria-label={label}
     >

@@ -33,6 +33,7 @@ def test_recommendations_returns_ranked_results() -> None:
 
     assert response.status_code == 200
     assert len(body["recommendations"]) == 3
+    assert body["llmFallbackUsed"] is False
     assert body["recommendations"][0]["fmaUrl"].startswith("https://")
     assert body["recommendations"][0]["popularity"] in {"Low", "Medium", "High"}
 
@@ -53,14 +54,19 @@ def test_recommendations_rejects_invalid_payload() -> None:
 
 class _StubRecommendationService:
     def get_recommendations(self, payload, limit: int = 5):
-        return [
-            RecommendedSong(
-                artist=f"Artist {index}",
-                title=f"Track {index}",
-                genre="Electronic",
-                fmaUrl=f"https://example.com/{index}",
-                matchScore=round(0.1 + (index * 0.01), 4),
-                popularity="Low",
-            )
-            for index in range(limit)
-        ]
+        from app.models.schemas import RecommendationResponse
+
+        return RecommendationResponse(
+            recommendations=[
+                RecommendedSong(
+                    artist=f"Artist {index}",
+                    title=f"Track {index}",
+                    genre="Electronic",
+                    fmaUrl=f"https://example.com/{index}",
+                    matchScore=round(0.1 + (index * 0.01), 4),
+                    popularity="Low",
+                )
+                for index in range(limit)
+            ],
+            llmFallbackUsed=False,
+        )

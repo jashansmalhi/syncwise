@@ -4,6 +4,8 @@ import { SongCard } from '../components/SongCard'
 import { ThemedSelect } from '../components/ThemedSelect'
 import type { Genre, Industry, LyricsPreference, Mood, RecommendedSong, Tempo } from '../types'
 
+type GenreSelection = Genre | 'No Preference'
+
 const energyOptions = [
   { value: 1, label: 'Calm' },
   { value: 2, label: 'Relaxed' },
@@ -26,7 +28,8 @@ const industryOptions: Industry[] = [
   'Healthcare',
 ]
 
-const genreOptions: Genre[] = [
+const genreOptions: GenreSelection[] = [
+  'No Preference',
   'Electronic',
   'Chiptune',
   'Sound Art',
@@ -61,10 +64,11 @@ export function AdSubmissionPage() {
   const [tempo, setTempo] = useState<Tempo>('Medium')
   const [mood, setMood] = useState<Mood>('Neutral')
   const [industry, setIndustry] = useState<Industry>('Tech')
-  const [genre, setGenre] = useState<Genre>('Electronic')
+  const [genre, setGenre] = useState<GenreSelection>('No Preference')
   const [lyricsPreference, setLyricsPreference] = useState<LyricsPreference>('No Preference')
 
   const [results, setResults] = useState<RecommendedSong[]>([])
+  const [llmFallbackUsed, setLlmFallbackUsed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasSubmitted, setHasSubmitted] = useState(false)
@@ -77,6 +81,8 @@ export function AdSubmissionPage() {
     const requestId = ++requestIdRef.current
     setIsLoading(true)
     setError(null)
+    setResults([])
+    setLlmFallbackUsed(false)
 
     try {
       const response = await fetchRecommendations({
@@ -85,12 +91,13 @@ export function AdSubmissionPage() {
         tempo,
         mood,
         industry,
-        genreOverride: [genre],
+        genreOverride: genre === 'No Preference' ? undefined : [genre],
         lyricsPreference,
         limit,
       })
       if (requestId === requestIdRef.current) {
         setResults(response.recommendations)
+        setLlmFallbackUsed(response.llmFallbackUsed)
       }
     } catch (submitError) {
       const fallback =
@@ -98,6 +105,7 @@ export function AdSubmissionPage() {
       if (requestId === requestIdRef.current) {
         setError(submitError instanceof Error ? submitError.message || fallback : fallback)
         setResults([])
+        setLlmFallbackUsed(false)
       }
     } finally {
       if (requestId === requestIdRef.current) {
@@ -120,9 +128,10 @@ export function AdSubmissionPage() {
     setTempo('Medium')
     setMood('Neutral')
     setIndustry('Tech')
-    setGenre('Electronic')
+    setGenre('No Preference')
     setLyricsPreference('No Preference')
     setResults([])
+    setLlmFallbackUsed(false)
     setError(null)
     setHasSubmitted(false)
     setIsLoading(false)
@@ -160,7 +169,7 @@ export function AdSubmissionPage() {
       tempo,
       mood,
       industry,
-      genre,
+      genre: genre === 'No Preference' ? 'Automatic' : genre,
       lyricsPreference,
     }),
     [adTitle, duration, energy, tempo, mood, industry, genre, lyricsPreference],
@@ -262,8 +271,8 @@ export function AdSubmissionPage() {
                 <ThemedSelect label="Industry" value={industry} options={industryOptions} onChange={setIndustry} />
               </Field>
 
-              <Field label="Genre Override">
-                <ThemedSelect label="Genre" value={genre} options={genreOptions} onChange={setGenre} />
+              <Field label="Preferred Genre">
+                <ThemedSelect label="Preferred Genre" value={genre} options={genreOptions} onChange={setGenre} />
               </Field>
             </div>
 
@@ -286,7 +295,11 @@ export function AdSubmissionPage() {
         </div>
 
         <aside
-          className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex lg:flex-col"
+          className={`overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-6 lg:flex lg:flex-col ${
+            llmFallbackUsed
+              ? 'border-violet-200 bg-gradient-to-br from-white via-violet-50/50 to-fuchsia-50/50 shadow-[0_18px_48px_rgba(109,40,217,0.12)]'
+              : 'border-slate-200 bg-white'
+          }`}
           style={rightPanelHeight ? { height: `${rightPanelHeight}px` } : undefined}
         >
           <div className="mb-4 flex items-start justify-between gap-3">
@@ -319,7 +332,7 @@ export function AdSubmissionPage() {
               })}
             </div>
           </div>
-          <p className="mb-4 text-sm text-slate-500">{recommendationsHint}</p>
+          <p className={`mb-4 text-sm ${llmFallbackUsed ? 'text-violet-700/80' : 'text-slate-500'}`}>{recommendationsHint}</p>
           <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
             {!hasSubmitted && (
               <div className="surface-enter rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-600">
@@ -364,7 +377,7 @@ export function AdSubmissionPage() {
                       className="result-enter min-h-0"
                       style={{ animationDelay: `${Math.min(index * 90, 360)}ms` }}
                     >
-                      <SongCard song={song} fitMode={fitMode} />
+                      <SongCard song={song} fitMode={fitMode} fallbackUsed={llmFallbackUsed} />
                     </div>
                   ))}
                 </div>

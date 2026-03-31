@@ -17,6 +17,7 @@ describe('fetchRecommendations', () => {
     const fetchMock = vi.spyOn(window, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
+          llmFallbackUsed: false,
           recommendations: [
             {
               artist: 'Artist A',
@@ -60,6 +61,7 @@ describe('fetchRecommendations', () => {
       }),
     )
     expect(response.recommendations[0].fmaUrl).toBe('https://example.com/a')
+    expect(response.llmFallbackUsed).toBe(false)
   })
 
   it('surfaces the validation error for short descriptions', async () => {

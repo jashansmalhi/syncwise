@@ -79,3 +79,4 @@ class RecommendedSong(BaseModel):
 
 class RecommendationResponse(BaseModel):
     recommendations: List[RecommendedSong]
+    llmFallbackUsed: bool = False

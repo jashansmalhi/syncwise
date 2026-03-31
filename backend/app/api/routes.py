@@ -15,5 +15,4 @@ def health() -> Dict[str, str]:
 
 @router.post("/recommendations", response_model=RecommendationResponse)
 def recommendations(payload: RecommendationRequest) -> RecommendationResponse:
-    results = recommendation_service.get_recommendations(payload, limit=payload.limit)
-    return RecommendationResponse(recommendations=results)
+    return recommendation_service.get_recommendations(payload, limit=payload.limit)

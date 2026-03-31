@@ -58,4 +58,5 @@ export interface RecommendedSong {
 
 export interface RecommendationResponse {
   recommendations: RecommendedSong[]
+  llmFallbackUsed: boolean
 }

@@ -16,7 +16,9 @@ class Settings:
         self.frontend_urls_raw = os.getenv(
             "FRONTEND_URLS", "http://localhost:5173,http://127.0.0.1:5173"
         )
-        self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        self.ollama_api_key = os.getenv("OLLAMA_API_KEY", "")
+        self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "https://ollama.com")
+        self.ollama_model = os.getenv("OLLAMA_MODEL", "ministral-3:3b")
         self.model_artifact_dir = os.getenv("MODEL_ARTIFACT_DIR", str(DEFAULT_ARTIFACT_DIR))
 
     @property
