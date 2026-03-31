@@ -185,7 +185,7 @@ export function AdSubmissionPage() {
         <h2 className="mb-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Find the right music for your campaign</h2>
         <p className="max-w-3xl text-slate-600">
           Describe your campaign and get ranked track recommendations with clear fit explanations
-          Lower scores indicate closer matches in the V4 model.
+          Higher match scores indicate stronger fits based on the V4 model.
         </p>
       </section>
 
@@ -356,19 +356,18 @@ export function AdSubmissionPage() {
             )}
 
             {visibleResults.length > 0 && (
-              <div
-                className={`grid gap-2 lg:min-h-0 ${visibleResults.length >= 8 ? 'lg:h-full' : 'content-start'}`}
-                style={
-                  visibleResults.length >= 8
-                    ? { gridTemplateRows: `repeat(${visibleResults.length}, minmax(0, 1fr))` }
-                    : undefined
-                }
-              >
-                {visibleResults.map((song, index) => (
-                  <div key={`${song.artist}-${song.title}-${index}`} className="result-enter min-h-0" style={{ animationDelay: `${Math.min(index * 90, 360)}ms` }}>
-                    <SongCard song={song} fitMode={fitMode} />
-                  </div>
-                ))}
+              <div className={`recommendation-scroll pr-1 ${visibleResults.length >= 8 ? 'lg:min-h-0 lg:flex-1 lg:overflow-y-auto' : ''}`}>
+                <div className="flex flex-col gap-2 content-start">
+                  {visibleResults.map((song, index) => (
+                    <div
+                      key={`${song.artist}-${song.title}-${index}`}
+                      className="result-enter min-h-0"
+                      style={{ animationDelay: `${Math.min(index * 90, 360)}ms` }}
+                    >
+                      <SongCard song={song} fitMode={fitMode} />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

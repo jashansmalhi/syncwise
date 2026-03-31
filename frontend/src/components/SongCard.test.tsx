@@ -20,8 +20,8 @@ describe('SongCard', () => {
 
     expect(screen.getByText('Track A')).toBeInTheDocument()
     expect(screen.getByText('Artist A')).toBeInTheDocument()
-    expect(screen.getByText('score 0.1234')).toBeInTheDocument()
+    expect(screen.getByText('88% match')).toBeInTheDocument()
     expect(screen.getByText('Low')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Open on FMA' })).toHaveAttribute('href', 'https://example.com/a')
+    expect(screen.getByRole('link', { name: 'Open Track' })).toHaveAttribute('href', 'https://example.com/a')
   })
 })

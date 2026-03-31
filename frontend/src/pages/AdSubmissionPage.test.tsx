@@ -60,7 +60,7 @@ describe('AdSubmissionPage', () => {
 
     expect(await screen.findByText('Track A')).toBeInTheDocument()
     expect(
-      screen.getByText(/Lower scores indicate closer matches in the V4 model\./),
+      screen.getByText(/Higher match scores indicate stronger fits based on the V4 model\./),
     ).toBeInTheDocument()
   })
 })
