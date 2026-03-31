@@ -1,20 +1,25 @@
 import type { RecommendationRequest, RecommendationResponse } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const DEFAULT_ERROR_MESSAGE = 'We hit a temporary issue generating recommendations. Please try again.'
 
 export async function fetchRecommendations(
   payload: RecommendationRequest,
 ): Promise<RecommendationResponse> {
-  const response = await fetch(`${API_BASE_URL}/recommendations`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}/recommendations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    throw new Error(DEFAULT_ERROR_MESSAGE)
+  }
 
   if (!response.ok) {
-    let errorMessage = 'Failed to fetch recommendations'
     const responseText = await response.text()
 
     try {
@@ -23,17 +28,18 @@ export async function fetchRecommendations(
       }
       const firstIssue = parsed.detail?.[0]
       if (firstIssue?.loc?.includes('adDescription')) {
-        errorMessage = 'Ad description must be at least 5 characters'
-      } else if (firstIssue?.msg) {
-        errorMessage = firstIssue.msg
+        throw new Error('Ad description must be at least 5 characters')
       }
-    } catch {
-      if (responseText) {
-        errorMessage = responseText
+      if (firstIssue?.msg) {
+        throw new Error(firstIssue.msg)
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message !== 'Unexpected token') {
+        throw error
       }
     }
 
-    throw new Error(errorMessage)
+    throw new Error(DEFAULT_ERROR_MESSAGE)
   }
 
   return response.json() as Promise<RecommendationResponse>

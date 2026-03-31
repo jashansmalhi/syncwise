@@ -132,9 +132,11 @@ export function AdSubmissionPage() {
   const [rightPanelHeight, setRightPanelHeight] = useState<number>()
   const leftPanelRef = useRef<HTMLDivElement | null>(null)
   const requestIdRef = useRef(0)
+  const lastRequestedLimitRef = useRef<number>(MAX_RECOMMENDATIONS)
 
   async function runRecommendationRequest(limit: number) {
     const requestId = ++requestIdRef.current
+    lastRequestedLimitRef.current = limit
     setIsLoading(true)
     setError(null)
     setResults([])
@@ -194,6 +196,10 @@ export function AdSubmissionPage() {
     setError(null)
     setHasSubmitted(false)
     setIsLoading(false)
+  }
+
+  function handleRetry() {
+    void runRecommendationRequest(lastRequestedLimitRef.current)
   }
 
   function applyDemoPrompt(prompt: DemoPromptPreset['values']) {
@@ -426,7 +432,17 @@ export function AdSubmissionPage() {
             )}
 
             {hasSubmitted && !isLoading && error && (
-              <div className="surface-enter rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
+              <div className="surface-enter rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                <p className="font-medium text-rose-800">We hit a temporary issue generating recommendations. Please try again.</p>
+                <p className="mt-1 text-rose-700/90">{error}</p>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="mt-3 inline-flex items-center justify-center rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                >
+                  Try Again
+                </button>
+              </div>
             )}
 
             {hasSubmitted && !isLoading && !error && results.length === 0 && (

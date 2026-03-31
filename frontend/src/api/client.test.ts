@@ -84,4 +84,18 @@ describe('fetchRecommendations', () => {
       }),
     ).rejects.toThrow('Ad description must be at least 5 characters')
   })
+
+  it('returns a presentation-safe message when the network fails', async () => {
+    vi.spyOn(window, 'fetch').mockRejectedValue(new Error('offline'))
+
+    await expect(
+      fetchRecommendations({
+        adDescription: 'A polished AI product launch for a tech brand.',
+        energy: 4,
+        tempo: 'Medium',
+        mood: 'Positive',
+        industry: 'Tech',
+      }),
+    ).rejects.toThrow('We hit a temporary issue generating recommendations. Please try again.')
+  })
 })
