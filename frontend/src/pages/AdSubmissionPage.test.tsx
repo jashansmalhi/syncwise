@@ -9,6 +9,18 @@ vi.mock('../api/client', () => ({
   fetchRecommendations: vi.fn(),
 }))
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+
+  return { promise, resolve, reject }
+}
+
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
@@ -93,5 +105,76 @@ describe('AdSubmissionPage', () => {
 
     expect(await screen.findByText('Track A')).toBeInTheDocument()
     expect(screen.queryByText('Fallback Mode')).not.toBeInTheDocument()
+  })
+
+  it('clears previous results immediately and shows staged loading copy while a new request is pending', async () => {
+    const fetchRecommendationsMock = vi.mocked(fetchRecommendations)
+    fetchRecommendationsMock.mockResolvedValueOnce({
+      llmFallbackUsed: false,
+      recommendations: [
+        {
+          artist: 'Artist One',
+          title: 'Existing Track',
+          genre: 'Pop',
+          fmaUrl: 'https://example.com/one',
+          matchScore: 0.2234,
+          popularity: 'Mid-High',
+        },
+      ],
+    })
+
+    const deferred = createDeferred<{
+      llmFallbackUsed: boolean
+      recommendations: Array<{
+        artist: string
+        title: string
+        genre: string
+        fmaUrl: string
+        matchScore: number
+        popularity: string
+      }>
+    }>()
+    fetchRecommendationsMock.mockReturnValueOnce(deferred.promise)
+
+    const user = userEvent.setup()
+    render(<AdSubmissionPage />)
+
+    await user.type(
+      screen.getAllByPlaceholderText(
+        'A fast-paced campaign showing an AI-powered car dashboard with cinematic transitions',
+      )[0],
+      'A polished AI dashboard commercial for a tech audience.',
+    )
+
+    await user.click(screen.getByRole('button', { name: '4 Upbeat' }))
+    await user.click(screen.getByRole('button', { name: 'Positive' }))
+    await user.click(screen.getByRole('button', { name: 'No Lyrics' }))
+    await user.click(screen.getByRole('button', { name: 'Start Ad Matching' }))
+
+    expect(await screen.findByText('Existing Track')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Start Ad Matching' }))
+
+    expect(screen.queryByText('Existing Track')).not.toBeInTheDocument()
+    expect(screen.getByText('Curating your results into a ranked shortlist')).toBeInTheDocument()
+    expect(screen.getByText('Analyzing campaign tone')).toBeInTheDocument()
+    expect(screen.getByText('Scoring best-fit tracks')).toBeInTheDocument()
+    expect(screen.getByText('Preparing the shortlist')).toBeInTheDocument()
+
+    deferred.resolve({
+      llmFallbackUsed: false,
+      recommendations: [
+        {
+          artist: 'Artist Two',
+          title: 'Fresh Track',
+          genre: 'Electronic',
+          fmaUrl: 'https://example.com/two',
+          matchScore: 0.1111,
+          popularity: 'Low',
+        },
+      ],
+    })
+
+    expect(await screen.findByText('Fresh Track')).toBeInTheDocument()
   })
 })

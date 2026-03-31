@@ -1,6 +1,7 @@
 import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchRecommendations } from '../api/client'
 import { DemoPromptStrip, type DemoPromptPreset } from '../components/DemoPromptStrip'
+import { LoadingState } from '../components/LoadingState'
 import { SongCard } from '../components/SongCard'
 import { ThemedSelect } from '../components/ThemedSelect'
 import type { Genre, Industry, LyricsPreference, Mood, RecommendedSong, Tempo } from '../types'
@@ -171,6 +172,9 @@ export function AdSubmissionPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setResults([])
+    setLlmFallbackUsed(false)
+    setError(null)
     setHasSubmitted(true)
     await runRecommendationRequest(MAX_RECOMMENDATIONS)
   }
@@ -248,7 +252,7 @@ export function AdSubmissionPage() {
   )
 
   const recommendationsHint = useMemo(() => {
-    if (isLoading) return 'Generating ranked recommendations for your campaign'
+    if (isLoading) return 'Curating your results into a ranked shortlist'
     if (error) return 'We could not generate recommendations. Update campaign details and try again.'
     if (!hasSubmitted) return 'Ranked track recommendations will appear here after you submit a campaign'
     if (results.length > 0) return ''
@@ -415,21 +419,10 @@ export function AdSubmissionPage() {
             )}
 
             {hasSubmitted && isLoading && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="loading-wave">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <p className="mt-3 text-center text-sm text-slate-600">Curating your top matches</p>
-                </div>
-                <div className="space-y-3">
-                  <LoadingCard />
-                  <LoadingCard />
-                </div>
-              </div>
+              <LoadingState
+                subtitle="We are shaping a ranked shortlist that fits the brief you just gave us."
+                steps={['Analyzing campaign tone', 'Scoring best-fit tracks', 'Preparing the shortlist']}
+              />
             )}
 
             {hasSubmitted && !isLoading && error && (
@@ -551,16 +544,6 @@ function SummaryChip({ label, value }: { label: string; value: string }) {
     <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs">
       <span className="text-slate-500">{label}:</span>
       <span className="font-medium text-slate-800">{value}</span>
-    </div>
-  )
-}
-
-function LoadingCard() {
-  return (
-    <div className="animate-pulse rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div className="mb-3 h-4 w-2/3 rounded bg-slate-200" />
-      <div className="mb-2 h-3 w-1/2 rounded bg-slate-200" />
-      <div className="h-3 w-4/5 rounded bg-slate-200" />
     </div>
   )
 }
